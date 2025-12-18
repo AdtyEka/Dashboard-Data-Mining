@@ -703,8 +703,8 @@ elif page == "Prediksi":
                         with col1:
                             # Jika output binary (0 atau 1)
                             if len(prediction[0]) == 1:
-                                prob_stunting = prediction[0][0]
-                                prob_no_stunting = 1 - prob_stunting
+                                prob_stunting = float(prediction[0][0])
+                                prob_no_stunting = 1.0 - prob_stunting
                                 
                                 if prob_stunting > 0.5:
                                     result = "Stunting"
@@ -729,8 +729,8 @@ elif page == "Prediksi":
                             
                             # Jika output multi-class atau softmax
                             else:
-                                prob_no_stunting = prediction[0][0]
-                                prob_stunting = prediction[0][1] if len(prediction[0]) > 1 else 0
+                                prob_no_stunting = float(prediction[0][0])
+                                prob_stunting = float(prediction[0][1]) if len(prediction[0]) > 1 else 0.0
                                 
                                 if prob_stunting > prob_no_stunting:
                                     result = "Stunting"
@@ -758,8 +758,9 @@ elif page == "Prediksi":
                             st.metric("Tidak Stunting", f"{prob_no_stunting*100:.2f}%")
                             st.metric("Stunting", f"{prob_stunting*100:.2f}%")
                             
-                            # Progress bar untuk probabilitas
-                            st.progress(prob_stunting, text=f"Risiko Stunting: {prob_stunting*100:.1f}%")
+                            # Progress bar untuk probabilitas - konversi ke float Python
+                            prob_stunting_float = float(prob_stunting)
+                            st.progress(prob_stunting_float, text=f"Risiko Stunting: {prob_stunting*100:.1f}%")
                             
                             st.markdown("---")
                             st.subheader("Rekomendasi")
