@@ -593,26 +593,102 @@ elif page == "Prediksi":
                 
                 st.markdown("---")
                 
+                # Fungsi preprocessing untuk mengubah input menjadi format yang diharapkan model
+                def preprocess_input(sex, age, birth_weight, birth_length, body_weight, body_length, asi):
+                    # Normalisasi berdasarkan range dari dataset (dari stunting_all_dl.csv)
+                    # Range maksimum untuk normalisasi
+                    age_max = 60.0
+                    birth_weight_max = 4.5
+                    birth_length_max = 55.0
+                    body_weight_max = 20.0
+                    body_length_max = 110.0
+                    
+                    # Normalisasi fitur numerik (0-1 scaling) - sesuai dengan data training
+                    age_norm = float(age) / age_max if age_max > 0 else 0.0
+                    birth_weight_norm = float(birth_weight) / birth_weight_max if birth_weight_max > 0 else 0.0
+                    birth_length_norm = float(birth_length) / birth_length_max if birth_length_max > 0 else 0.0
+                    body_weight_norm = float(body_weight) / body_weight_max if body_weight_max > 0 else 0.0
+                    body_length_norm = float(body_length) / body_length_max if body_length_max > 0 else 0.0
+                    
+                    # Age in years
+                    age_years = float(age) / 12.0
+                    
+                    # BMI calculation
+                    bmi = float(body_weight) / ((float(body_length) / 100.0) ** 2) if body_length > 0 else 0.0
+                    
+                    # Growth calculations
+                    weight_growth = float(body_weight) - float(birth_weight)
+                    length_growth = float(body_length) - float(birth_length)
+                    
+                    # Weight and Length per Age (normalized)
+                    weight_per_age = float(body_weight) / float(age) if age > 0 else 0.0
+                    length_per_age = float(body_length) / float(age) if age > 0 else 0.0
+                    
+                    # Binary features
+                    low_birth_weight = 1.0 if birth_weight < 2.5 else 0.0
+                    short_birth_length = 1.0 if birth_length < 48.0 else 0.0
+                    
+                    # ASI features
+                    asi_numerical = 1.0 if asi == "Yes" else 0.0
+                    asi_weight_growth = weight_growth if asi == "Yes" else 0.0
+                    
+                    # Nutritional stress (simplified calculation)
+                    nutritional_stress = (1.0 - body_weight_norm) * (1.0 - body_length_norm)
+                    
+                    # Log transformations
+                    log_body_weight = np.log(float(body_weight) + 1.0) if body_weight > 0 else 0.0
+                    log_body_length = np.log(float(body_length) + 1.0) if body_length > 0 else 0.0
+                    
+                    # One-hot encoding for Sex
+                    sex_female = 1.0 if sex == "Female" else 0.0
+                    sex_male = 1.0 if sex == "Male" else 0.0
+                    
+                    # One-hot encoding for ASI
+                    asi_no = 1.0 if asi == "No" else 0.0
+                    asi_yes = 1.0 if asi == "Yes" else 0.0
+                    
+                    # Urutan fitur sesuai dengan model - 17 fitur pertama dari stunting_all_dl.csv
+                    # Berdasarkan kolom: Age, Birth_Weight, Birth_Length, Body_Weight, Body_Length, 
+                    # Age_Years, BMI, Weight_Growth, Length_Growth, Weight_per_Age, Length_per_Age,
+                    # Low_Birth_Weight, Short_Birth_Length, ASI_Eksklusif_Numerical, ASI_Weight_Growth,
+                    # Nutritional_Stress, Log_Body_Weight
+                    features = [
+                        age_norm,                    # 0: Age (normalized)
+                        birth_weight_norm,           # 1: Birth_Weight (normalized)
+                        birth_length_norm,           # 2: Birth_Length (normalized)
+                        body_weight_norm,            # 3: Body_Weight (normalized)
+                        body_length_norm,            # 4: Body_Length (normalized)
+                        age_years,                   # 5: Age_Years
+                        bmi,                         # 6: BMI
+                        weight_growth,               # 7: Weight_Growth
+                        length_growth,               # 8: Length_Growth
+                        weight_per_age,              # 9: Weight_per_Age
+                        length_per_age,              # 10: Length_per_Age
+                        low_birth_weight,            # 11: Low_Birth_Weight
+                        short_birth_length,          # 12: Short_Birth_Length
+                        asi_numerical,               # 13: ASI_Eksklusif_Numerical
+                        asi_weight_growth,           # 14: ASI_Weight_Growth
+                        nutritional_stress,          # 15: Nutritional_Stress
+                        log_body_weight              # 16: Log_Body_Weight (fitur ke-17)
+                    ]
+                    
+                    # Pastikan ada 17 fitur
+                    assert len(features) == 17, f"Expected 17 features, got {len(features)}"
+                    
+                    return np.array([features], dtype=np.float32)
+                
                 # Tombol prediksi
                 if st.button("Prediksi Stunting", type="primary", use_container_width=True):
-                    # Prepare data untuk prediksi
-                    # Encoding categorical variables
-                    # Sex: Male=1, Female=0
-                    sex_encoded = 1 if sex_input == "Male" else 0
-                    # ASI_Eksklusif: Yes=1, No=0
-                    asi_encoded = 1 if asi_input == "Yes" else 0
-                    
-                    # Buat array input sesuai dengan struktur model
-                    # Urutan: Sex, Age, Birth_Weight, Birth_Length, Body_Weight, Body_Length, ASI_Eksklusif
-                    input_data = np.array([[
-                        sex_encoded,
-                        float(age_input),
-                        float(birth_weight),
-                        float(birth_length),
-                        float(body_weight),
-                        float(body_length),
-                        asi_encoded
-                    ]], dtype=np.float32)
+                    # Preprocess input data
+                    input_data = preprocess_input(
+                        sex_input,
+                        age_input,
+                        birth_weight,
+                        birth_length,
+                        body_weight,
+                        body_length,
+                        asi_input
+                    )
                     
                     try:
                         # Prediksi
