@@ -659,13 +659,13 @@ elif page == "Prediksi":
                     weight_growth = float(body_weight) - float(birth_weight)
                     length_growth = float(body_length) - float(birth_length)
                     
-                    # Weight and Length per Age (normalized - berdasarkan data training)
-                    # Dari data: weight_per_age max sekitar 1.1, length_per_age max sekitar 7.7
-                    weight_per_age_raw = float(body_weight) / float(age) if age > 0 else 0.0
-                    length_per_age_raw = float(body_length) / float(age) if age > 0 else 0.0
-                    # Normalisasi berdasarkan range data training
-                    weight_per_age = weight_per_age_raw / 1.2 if weight_per_age_raw > 0 else 0.0
-                    length_per_age = length_per_age_raw / 8.0 if length_per_age_raw > 0 else 0.0
+                    # Weight and Length per Age (tidak dinormalisasi - langsung dari perhitungan)
+                    # Dari analisis data training: 
+                    # Weight_per_Age range: 0.09 - 1.85 (nilai aktual body_weight/age)
+                    # Length_per_Age range: 1.16 - 12.61 (nilai aktual body_length/age)
+                    # Jadi tidak perlu normalisasi tambahan, langsung hitung
+                    weight_per_age = float(body_weight) / float(age) if age > 0 else 0.0
+                    length_per_age = float(body_length) / float(age) if age > 0 else 0.0
                     
                     # Binary features
                     low_birth_weight = 1.0 if birth_weight < 2.5 else 0.0
