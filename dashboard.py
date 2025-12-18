@@ -620,9 +620,13 @@ elif page == "Prediksi":
                     weight_growth = float(body_weight) - float(birth_weight)
                     length_growth = float(body_length) - float(birth_length)
                     
-                    # Weight and Length per Age (normalized)
-                    weight_per_age = float(body_weight) / float(age) if age > 0 else 0.0
-                    length_per_age = float(body_length) / float(age) if age > 0 else 0.0
+                    # Weight and Length per Age (normalized - berdasarkan data training)
+                    # Dari data: weight_per_age max sekitar 1.1, length_per_age max sekitar 7.7
+                    weight_per_age_raw = float(body_weight) / float(age) if age > 0 else 0.0
+                    length_per_age_raw = float(body_length) / float(age) if age > 0 else 0.0
+                    # Normalisasi berdasarkan range data training
+                    weight_per_age = weight_per_age_raw / 1.2 if weight_per_age_raw > 0 else 0.0
+                    length_per_age = length_per_age_raw / 8.0 if length_per_age_raw > 0 else 0.0
                     
                     # Binary features
                     low_birth_weight = 1.0 if birth_weight < 2.5 else 0.0
@@ -691,8 +695,30 @@ elif page == "Prediksi":
                     )
                     
                     try:
+                        # Debug: Tampilkan input data yang sudah di-preprocess
+                        with st.expander("Debug: Input Data (17 fitur)", expanded=False):
+                            feature_names = [
+                                "Age (norm)", "Birth_Weight (norm)", "Birth_Length (norm)",
+                                "Body_Weight (norm)", "Body_Length (norm)", "Age_Years",
+                                "BMI", "Weight_Growth", "Length_Growth", "Weight_per_Age (norm)",
+                                "Length_per_Age (norm)", "Low_Birth_Weight", "Short_Birth_Length",
+                                "ASI_Eksklusif_Numerical", "ASI_Weight_Growth", "Nutritional_Stress",
+                                "Log_Body_Weight"
+                            ]
+                            debug_df = pd.DataFrame({
+                                'Feature': feature_names,
+                                'Value': input_data[0]
+                            })
+                            st.dataframe(debug_df, use_container_width=True)
+                        
                         # Prediksi
                         prediction = model.predict(input_data, verbose=0)
+                        
+                        # Debug: Tampilkan raw prediction
+                        with st.expander("Debug: Raw Prediction", expanded=False):
+                            st.write(f"Prediction shape: {prediction.shape}")
+                            st.write(f"Prediction values: {prediction}")
+                            st.write(f"Prediction type: {type(prediction[0][0])}")
                         
                         # Tampilkan hasil
                         st.markdown("### Hasil Prediksi")
@@ -701,12 +727,17 @@ elif page == "Prediksi":
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            # Jika output binary (0 atau 1)
+                            # Interpretasi output model
+                            # Jika output binary (sigmoid - 1 nilai: probabilitas stunting)
                             if len(prediction[0]) == 1:
                                 prob_stunting = float(prediction[0][0])
+                                # Pastikan probabilitas dalam range 0-1
+                                prob_stunting = max(0.0, min(1.0, prob_stunting))
                                 prob_no_stunting = 1.0 - prob_stunting
                                 
-                                if prob_stunting > 0.5:
+                                # Threshold untuk klasifikasi
+                                threshold = 0.5
+                                if prob_stunting > threshold:
                                     result = "Stunting"
                                     result_color = "#e74c3c"
                                 else:
@@ -727,11 +758,18 @@ elif page == "Prediksi":
                                 fig.update_layout(height=400, showlegend=False)
                                 st.plotly_chart(fig, use_container_width=True)
                             
-                            # Jika output multi-class atau softmax
+                            # Jika output multi-class atau softmax (2 nilai: [tidak_stunting, stunting])
                             else:
                                 prob_no_stunting = float(prediction[0][0])
                                 prob_stunting = float(prediction[0][1]) if len(prediction[0]) > 1 else 0.0
                                 
+                                # Normalisasi jika perlu (softmax sudah normalized)
+                                total = prob_no_stunting + prob_stunting
+                                if total > 0:
+                                    prob_no_stunting = prob_no_stunting / total
+                                    prob_stunting = prob_stunting / total
+                                
+                                # Threshold untuk klasifikasi
                                 if prob_stunting > prob_no_stunting:
                                     result = "Stunting"
                                     result_color = "#e74c3c"
