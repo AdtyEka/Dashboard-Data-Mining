@@ -147,21 +147,28 @@ if page == "Overview":
     with col2:
         st.subheader("Distribusi berdasarkan Jenis Kelamin")
         sex_stunting = pd.crosstab(filtered_df['Sex'], filtered_df['Stunting'])
+        sex_stunting_reset = sex_stunting.reset_index()
+        sex_stunting_melted = pd.melt(
+            sex_stunting_reset,
+            id_vars=['Sex'],
+            value_vars=[0, 1],
+            var_name='Stunting',
+            value_name='Jumlah'
+        )
+        sex_stunting_melted['Stunting_Label'] = sex_stunting_melted['Stunting'].map({0: 'Tidak Stunting', 1: 'Stunting'})
         fig_bar = px.bar(
-            sex_stunting,
-            x=sex_stunting.index,
-            y=[sex_stunting[0], sex_stunting[1]],
+            sex_stunting_melted,
+            x='Sex',
+            y='Jumlah',
+            color='Stunting_Label',
             barmode='group',
-            labels={'value': 'Jumlah', 'index': 'Jenis Kelamin'},
-            color_discrete_sequence=['#3498db', '#e74c3c']
+            labels={'Sex': 'Jenis Kelamin', 'Jumlah': 'Jumlah'},
+            color_discrete_map={'Tidak Stunting': '#2ecc71', 'Stunting': '#e74c3c'}
         )
         fig_bar.update_layout(
             xaxis_title="Jenis Kelamin",
             yaxis_title="Jumlah",
             legend_title="Status Stunting",
-            legend=dict(
-                labels=['Tidak Stunting', 'Stunting']
-            ),
             height=400
         )
         st.plotly_chart(fig_bar, use_container_width=True)
@@ -169,21 +176,28 @@ if page == "Overview":
     # Grafik ASI Eksklusif
     st.subheader("Pengaruh ASI Eksklusif terhadap Stunting")
     asi_stunting = pd.crosstab(filtered_df['ASI_Eksklusif'], filtered_df['Stunting'])
+    asi_stunting_reset = asi_stunting.reset_index()
+    asi_stunting_melted = pd.melt(
+        asi_stunting_reset,
+        id_vars=['ASI_Eksklusif'],
+        value_vars=[0, 1],
+        var_name='Stunting',
+        value_name='Jumlah'
+    )
+    asi_stunting_melted['Stunting_Label'] = asi_stunting_melted['Stunting'].map({0: 'Tidak Stunting', 1: 'Stunting'})
     fig_asi = px.bar(
-        asi_stunting,
-        x=asi_stunting.index,
-        y=[asi_stunting[0], asi_stunting[1]],
+        asi_stunting_melted,
+        x='ASI_Eksklusif',
+        y='Jumlah',
+        color='Stunting_Label',
         barmode='group',
-        labels={'value': 'Jumlah', 'index': 'ASI Eksklusif'},
-        color_discrete_sequence=['#9b59b6', '#e74c3c']
+        labels={'ASI_Eksklusif': 'ASI Eksklusif', 'Jumlah': 'Jumlah'},
+        color_discrete_map={'Tidak Stunting': '#2ecc71', 'Stunting': '#e74c3c'}
     )
     fig_asi.update_layout(
         xaxis_title="ASI Eksklusif",
         yaxis_title="Jumlah",
         legend_title="Status Stunting",
-        legend=dict(
-            labels=['Tidak Stunting', 'Stunting']
-        ),
         height=400
     )
     st.plotly_chart(fig_asi, use_container_width=True)
