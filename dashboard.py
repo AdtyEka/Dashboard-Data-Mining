@@ -2,11 +2,11 @@
 import streamlit as st
 from utils.data_loader import load_data
 from utils.filters import setup_sidebar_filters
-from pages.overview import render_overview
-from pages.visual_analysis import render_visual_analysis
-from pages.detail_analysis import render_detail_analysis
-from pages.data_explorer import render_data_explorer
-from pages.prediction import render_prediction
+from modules.overview import render_overview
+from modules.visual_analysis import render_visual_analysis
+from modules.detail_analysis import render_detail_analysis
+from modules.data_explorer import render_data_explorer
+from modules.prediction import render_prediction
 
 # Konfigurasi halaman
 st.set_page_config(
