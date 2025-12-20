@@ -1,5 +1,6 @@
 """Halaman Overview Dashboard"""
 import streamlit as st
+import pandas as pd
 from utils.data_loader import create_crosstab_melted, count_stunting
 from utils.visualizations import create_pie_chart, create_bar_chart
 
@@ -45,9 +46,26 @@ def render_overview(filtered_df):
         with col1:
             st.subheader("Distribusi Status Stunting")
             stunting_counts = filtered_df['Stunting'].value_counts()
+            
+            # Map values ke label yang benar
+            if pd.api.types.is_numeric_dtype(filtered_df['Stunting']):
+                # Jika numerik, map 0 dan 1
+                label_map = {0: 'Tidak Stunting', 1: 'Stunting'}
+            else:
+                # Jika string, map yes/no ke label
+                positive_values = ['yes', 'stunting', '1', 'true', 'y']
+                label_map = {
+                    val: 'Stunting' if str(val).lower().strip() in positive_values else 'Tidak Stunting'
+                    for val in stunting_counts.index
+                }
+            
+            # Buat names dan values yang sesuai
+            names = [label_map.get(val, str(val)) for val in stunting_counts.index]
+            values = stunting_counts.values
+            
             fig_pie = create_pie_chart(
-                stunting_counts.values,
-                ['Tidak Stunting', 'Stunting'],
+                values,
+                names,
                 "Distribusi Status Stunting"
             )
             st.plotly_chart(fig_pie, use_container_width=True)
