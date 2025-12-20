@@ -1,5 +1,6 @@
 """Fungsi untuk filter sidebar"""
 import streamlit as st
+import pandas as pd
 from utils.data_loader import count_stunting
 
 
@@ -20,31 +21,43 @@ def setup_sidebar_filters(df):
     
     # Filter berdasarkan jenis kelamin
     if 'Sex' in df.columns:
-        sex_filter = st.sidebar.multiselect(
-            "Jenis Kelamin",
-            options=df['Sex'].unique(),
-            default=df['Sex'].unique()
-        )
+        sex_options = [val for val in df['Sex'].unique() if pd.notna(val) and str(val).strip() != '']
+        if sex_options:
+            sex_filter = st.sidebar.multiselect(
+                "Jenis Kelamin",
+                options=sex_options,
+                default=sex_options
+            )
+        else:
+            sex_filter = []
     else:
         sex_filter = []
     
     # Filter berdasarkan ASI Eksklusif
     if 'ASI_Eksklusif' in df.columns:
-        asi_filter = st.sidebar.multiselect(
-            "ASI Eksklusif",
-            options=df['ASI_Eksklusif'].unique(),
-            default=df['ASI_Eksklusif'].unique()
-        )
+        asi_options = [val for val in df['ASI_Eksklusif'].unique() if pd.notna(val) and str(val).strip() != '']
+        if asi_options:
+            asi_filter = st.sidebar.multiselect(
+                "ASI Eksklusif",
+                options=asi_options,
+                default=asi_options
+            )
+        else:
+            asi_filter = []
     else:
         asi_filter = []
     
     # Filter berdasarkan Stunting
     if 'Stunting' in df.columns:
-        stunting_filter = st.sidebar.multiselect(
-            "Status Stunting",
-            options=df['Stunting'].unique(),
-            default=df['Stunting'].unique()
-        )
+        stunting_options = [val for val in df['Stunting'].unique() if pd.notna(val) and str(val).strip() != '']
+        if stunting_options:
+            stunting_filter = st.sidebar.multiselect(
+                "Status Stunting",
+                options=stunting_options,
+                default=stunting_options
+            )
+        else:
+            stunting_filter = []
     else:
         stunting_filter = []
     

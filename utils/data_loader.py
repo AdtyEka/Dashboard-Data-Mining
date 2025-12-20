@@ -81,16 +81,18 @@ def create_stunting_label(df):
 
 def create_crosstab_melted(df, index_col, value_col='Stunting'):
     """Helper untuk membuat crosstab yang sudah di-melt"""
-    crosstab = pd.crosstab(df[index_col], df[value_col])
+    # Filter NaN sebelum membuat crosstab
+    df_clean = df[[index_col, value_col]].dropna()
+    crosstab = pd.crosstab(df_clean[index_col], df_clean[value_col])
     crosstab_reset = crosstab.reset_index()
     
     # Tentukan value_vars berdasarkan tipe data
-    if pd.api.types.is_numeric_dtype(df[value_col]):
+    if pd.api.types.is_numeric_dtype(df_clean[value_col]):
         value_vars = [0, 1]
         label_map = {0: 'Tidak Stunting', 1: 'Stunting'}
     else:
-        # Ambil unique values dari kolom
-        unique_values = df[value_col].unique()
+        # Ambil unique values dari kolom (sudah difilter NaN)
+        unique_values = [val for val in df_clean[value_col].unique() if pd.notna(val) and str(val).strip() != '']
         value_vars = list(unique_values)
         # Buat label map untuk string values
         positive_values = ['yes', 'stunting', '1', 'true', 'y']
