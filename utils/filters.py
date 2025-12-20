@@ -1,5 +1,22 @@
 """Fungsi untuk filter sidebar"""
 import streamlit as st
+import pandas as pd
+
+
+def count_stunting(stunting_series):
+    """Hitung jumlah kasus stunting, handle baik numerik maupun string"""
+    if stunting_series.empty:
+        return 0
+    
+    # Cek apakah kolom numerik
+    if pd.api.types.is_numeric_dtype(stunting_series):
+        # Jika numerik, hitung yang == 1 atau > 0
+        return int((stunting_series == 1).sum() if (stunting_series == 1).any() else (stunting_series > 0).sum())
+    else:
+        # Jika string, hitung yang bernilai positif (case-insensitive)
+        stunting_series_lower = stunting_series.astype(str).str.lower().str.strip()
+        positive_values = ['yes', 'stunting', '1', 'true', 'y']
+        return int(stunting_series_lower.isin(positive_values).sum())
 
 
 def setup_sidebar_filters(df):
@@ -73,8 +90,13 @@ def setup_sidebar_filters(df):
     st.sidebar.markdown("---")
     st.sidebar.metric("Total Data", f"{len(filtered_df):,}")
     if 'Stunting' in filtered_df.columns:
-        st.sidebar.metric("Data Stunting", f"{filtered_df['Stunting'].sum():,}")
-        st.sidebar.metric("Persentase Stunting", f"{(filtered_df['Stunting'].sum()/len(filtered_df)*100):.2f}%")
+        # Hitung jumlah stunting (handle baik numerik maupun string)
+        stunting_count = count_stunting(filtered_df['Stunting'])
+        st.sidebar.metric("Data Stunting", f"{stunting_count:,}")
+        if len(filtered_df) > 0:
+            st.sidebar.metric("Persentase Stunting", f"{(stunting_count/len(filtered_df)*100):.2f}%")
+        else:
+            st.sidebar.metric("Persentase Stunting", "0.00%")
     
     # Informasi dataset yang digabung
     if 'Dataset_Source' in df.columns:
