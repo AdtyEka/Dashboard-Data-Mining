@@ -17,10 +17,8 @@ def render_prediction():
     model = load_model(MODEL_PATH)
     
     if model is None:
-        st.warning(f"⚠️ File model {MODEL_PATH} tidak ditemukan.")
+        # Error sudah ditampilkan oleh load_model, cukup return
         return
-    
-    st.success(f"Model berhasil dimuat: {MODEL_PATH}")
     
     with st.expander("Informasi Model"):
         try:

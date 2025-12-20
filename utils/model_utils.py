@@ -7,10 +7,27 @@ from constants import MODEL_PATH
 # Import untuk model
 try:
     from tensorflow import keras
+    import tensorflow as tf
     MODEL_AVAILABLE = True
 except ImportError:
     MODEL_AVAILABLE = False
     keras = None
+    tf = None
+
+
+def _check_h5_structure(model_path):
+    """Cek struktur file HDF5 untuk menentukan apakah hanya berisi weights"""
+    try:
+        import h5py
+        with h5py.File(model_path, 'r') as f:
+            keys = list(f.keys())
+            # Model lengkap biasanya punya 'model_config' atau 'config'
+            # Weights saja biasanya hanya punya layer names atau 'model_weights'
+            has_config = 'model_config' in keys or 'config' in keys
+            has_weights = 'model_weights' in keys or any('weight' in str(k).lower() for k in keys)
+            return has_config, has_weights, keys
+    except Exception:
+        return None, None, []
 
 
 @st.cache_resource
@@ -20,54 +37,112 @@ def load_model(model_path):
         return None
     
     if not os.path.exists(model_path):
+        st.error(f"⚠️ File model {model_path} tidak ditemukan.")
         return None
+    
+    errors = []
+    
+    # Cek struktur file HDF5
+    has_config, has_weights, h5_keys = _check_h5_structure(model_path)
     
     # Metode 1: Load model lengkap (default)
     try:
         model = keras.models.load_model(model_path, compile=False)
+        st.success(f"✅ Model berhasil dimuat menggunakan metode default")
         return model
     except Exception as e1:
-        # Metode 2: Coba load dengan safe_mode=False (untuk TensorFlow 2.16+)
+        errors.append(f"Metode 1 (default): {str(e1)}")
+    
+    # Metode 2: Load dengan safe_mode=False (untuk TensorFlow 2.16+)
+    try:
+        model = keras.models.load_model(model_path, compile=False, safe_mode=False)
+        st.success(f"✅ Model berhasil dimuat menggunakan safe_mode=False")
+        return model
+    except Exception as e2:
+        errors.append(f"Metode 2 (safe_mode=False): {str(e2)}")
+    
+    # Metode 3: Load dengan custom_objects kosong (untuk model tanpa custom objects)
+    try:
+        model = keras.models.load_model(model_path, compile=False, custom_objects={})
+        st.success(f"✅ Model berhasil dimuat dengan custom_objects kosong")
+        return model
+    except Exception as e3:
+        errors.append(f"Metode 3 (custom_objects): {str(e3)}")
+    
+    # Metode 4: Coba dengan tf.keras langsung
+    try:
+        model = tf.keras.models.load_model(model_path, compile=False)
+        st.success(f"✅ Model berhasil dimuat menggunakan tf.keras")
+        return model
+    except Exception as e4:
+        errors.append(f"Metode 4 (tf.keras): {str(e4)}")
+    
+    # Metode 5: Coba load dengan skip_mismatch jika hanya weights
+    if has_weights and not has_config:
         try:
-            model = keras.models.load_model(model_path, compile=False, safe_mode=False)
-            return model
-        except Exception as e2:
-            # Metode 3: Coba load sebagai SavedModel format
-            try:
-                import tensorflow as tf
-                model = tf.keras.models.load_model(model_path, compile=False)
-                return model
-            except Exception as e3:
-                # Metode 4: Coba load weights saja (jika model hanya berisi weights)
-                try:
-                    # Jika model hanya weights, kita perlu membuat arsitektur dulu
-                    # Tapi kita tidak tahu arsitekturnya, jadi kita skip metode ini
-                    pass
-                except:
-                    pass
-                
-                # Jika semua metode gagal, tampilkan error yang lebih informatif
-                error_msg = f"""
+            # Jika hanya weights, kita perlu membuat arsitektur model dulu
+            # Tapi karena kita tidak tahu arsitekturnya, kita coba metode lain
+            st.warning("⚠️ File hanya berisi weights, bukan model lengkap. Mencoba metode alternatif...")
+        except Exception as e5:
+            errors.append(f"Metode 5 (weights only): {str(e5)}")
+    
+    # Metode 6: Coba dengan allow_pickle=True (untuk model lama)
+    try:
+        model = keras.models.load_model(model_path, compile=False, custom_objects=None)
+        st.success(f"✅ Model berhasil dimuat")
+        return model
+    except Exception as e6:
+        errors.append(f"Metode 6 (allow_pickle): {str(e6)}")
+    
+    # Jika semua metode gagal, tampilkan error yang lebih informatif
+    error_msg = f"""
 **Error loading model: {model_path}**
 
 **Detail Error:**
-- Metode 1 (default): {str(e1)}
-- Metode 2 (safe_mode=False): {str(e2)}
-- Metode 3 (tf.keras): {str(e3)}
+{chr(10).join(f"- {err}" for err in errors)}
+
+**Struktur File HDF5:**
+- Keys ditemukan: {', '.join(h5_keys) if h5_keys else 'Tidak dapat dibaca'}
+- Memiliki config: {has_config if has_config is not None else 'Tidak diketahui'}
+- Memiliki weights: {has_weights if has_weights is not None else 'Tidak diketahui'}
 
 **Kemungkinan penyebab:**
 1. File model corrupt atau tidak valid
-2. Versi TensorFlow/Keras tidak kompatibel
+2. Versi TensorFlow/Keras tidak kompatibel (versi saat ini: {tf.__version__ if tf else 'Tidak terdeteksi'})
 3. Model disimpan dengan format yang berbeda
-4. Model hanya berisi weights tanpa config
+4. Model hanya berisi weights tanpa config (arsitektur model hilang)
+5. Model dibuat dengan versi TensorFlow yang berbeda
 
 **Solusi:**
-- Pastikan model disimpan dengan `model.save()` bukan hanya `model.save_weights()`
-- Cek versi TensorFlow: `pip install tensorflow>=2.13.0`
-- Jika model hanya weights, perlu membuat arsitektur model terlebih dahulu
-                """
-                st.error(error_msg)
-                return None
+1. **Pastikan model disimpan dengan lengkap:**
+   ```python
+   model.save('best_stunting_model.h5')  # ✅ Benar
+   # Bukan: model.save_weights('best_stunting_model.h5')  # ❌ Salah
+   ```
+
+2. **Update TensorFlow:**
+   ```bash
+   pip install --upgrade tensorflow>=2.13.0
+   ```
+
+3. **Jika model hanya berisi weights:**
+   - Anda perlu membuat ulang arsitektur model yang sama
+   - Kemudian load weights: `model.load_weights('best_stunting_model.h5')`
+
+4. **Cek kompatibilitas versi:**
+   - Pastikan versi TensorFlow yang digunakan untuk load sama dengan versi saat training
+   - Atau coba dengan versi TensorFlow yang lebih baru/lebih lama
+
+5. **Alternatif: Simpan ulang model dengan format yang lebih kompatibel:**
+   ```python
+   # Jika Anda punya akses ke kode training
+   model.save('best_stunting_model.h5', save_format='h5')
+   # Atau gunakan SavedModel format
+   model.save('best_stunting_model_savedmodel')
+   ```
+    """
+    st.error(error_msg)
+    return None
 
 
 def preprocess_input(sex, age, birth_weight, birth_length, body_weight, body_length, asi):
