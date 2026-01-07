@@ -15,3 +15,5 @@ DATASETS = [
 
 MODEL_PATH = 'best_stunting_model.h5'
 
+# MODEL_PATH = 'best_dl_model.keras'
+
